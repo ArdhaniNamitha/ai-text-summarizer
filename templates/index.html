@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>🧠 AI Text Summarizer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>🧠 AI Text Summarizer</h1>
+
+    <form method="post" enctype="multipart/form-data">
+      <textarea name="text" placeholder="Paste or type your article here..."></textarea><br>
+      <input type="file" name="file"><br><br>
+
+      <label for="length">Select Summary Length:</label>
+      <select name="length">
+        <option value="short">Short</option>
+        <option value="medium" selected>Medium</option>
+        <option value="long">Long</option>
+      </select><br><br>
+
+      <button type="submit">🧾 Summarize</button>
+    </form>
+
+    {% if summary %}
+      <div class="result">
+        <h3>📄 Structured Summary</h3>
+        <div style="white-space: pre-wrap;">{{ summary }}</div>
+        <h4>{{ info }}</h4>
+
+        <form action="/download" method="post">
+          <input type="hidden" name="summary" value="{{ summary }}">
+          <button type="submit">⬇️ Download Summary</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>
+
