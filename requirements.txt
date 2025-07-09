@@ -4,3 +4,4 @@ torch
 textstat
 python-docx
 PyPDF2
+sentencepiece
