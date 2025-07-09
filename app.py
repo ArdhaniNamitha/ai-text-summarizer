@@ -4,7 +4,7 @@ import docx, PyPDF2, textstat, json, os
 from datetime import datetime
 
 app = Flask(__name__)
-summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+summarizer = pipeline("summarization", model="t5-small", tokenizer="t5-small")
 
 def chunk_text(text, max_tokens=400):
     sentences = text.split('. ')
