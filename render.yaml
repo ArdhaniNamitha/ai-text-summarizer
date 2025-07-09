@@ -2,5 +2,5 @@ services:
   - type: web
     name: ai-summarizer
     env: python
-    buildCommand: ""
-    startCommand: "python app.py"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
