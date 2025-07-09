@@ -9,21 +9,37 @@
   <div class="container">
     <h1>🧠 AI Text Summarizer</h1>
 
+    <!-- === INPUT FORM === -->
     <form method="post" enctype="multipart/form-data">
-      <textarea name="text" placeholder="Paste or type your article here..."></textarea><br>
+      <textarea name="text" placeholder="Paste or type your article here...">{{ original }}</textarea><br>
       <input type="file" name="file"><br><br>
+
+      <label for="length">Select Summary Length:</label>
+      <select name="length">
+        <option value="short" {% if length == 'short' %}selected{% endif %}>Short</option>
+        <option value="medium" {% if length == 'medium' %}selected{% endif %}>Medium</option>
+        <option value="long" {% if length == 'long' %}selected{% endif %}>Long</option>
+      </select><br><br>
+
       <button type="submit">🧾 Summarize</button>
     </form>
 
+    <!-- === RESULT DISPLAY === -->
     {% if summary %}
       <div class="result">
         <h3>📄 Summary</h3>
         <div>{{ summary }}</div>
         <p><strong>Word Count:</strong> {{ word_count }}</p>
         <p><strong>Readability:</strong> {{ readability }}</p>
+
+        <form action="/download" method="post">
+          <input type="hidden" name="summary" value="{{ summary }}">
+          <button type="submit">⬇️ Download Summary</button>
+        </form>
       </div>
     {% endif %}
 
+    <!-- === HISTORY === -->
     {% if history %}
       <div class="result">
         <h3>🕒 Summary History</h3>
