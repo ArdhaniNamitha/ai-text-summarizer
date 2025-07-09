@@ -4,7 +4,7 @@ import docx, PyPDF2, textstat, json, os
 from datetime import datetime
 
 app = Flask(__name__)
-summarizer = pipeline("summarization", model="t5-small", tokenizer="t5-small")
+summarizer = pipeline("summarization", model="t5-small")
 
 def chunk_text(text, max_tokens=400):
     sentences = text.split('. ')
@@ -34,10 +34,8 @@ def summarize_text(text, length="medium"):
     chunks = chunk_text(text)
     summaries = []
 
-    max_len = {"short": 80, "medium": 130, "long": 200}.get(length, 130)
-
     for chunk in chunks:
-        result = summarizer(chunk, max_length=max_len, min_length=30, do_sample=False)[0]['summary_text']
+        result = summarizer(chunk, max_length=100, min_length=30, do_sample=False)[0]['summary_text']
         summaries.append(result)
 
     final = ' '.join(summaries)
@@ -90,11 +88,10 @@ def index():
     if request.method == "POST":
         text = request.form.get("text", "")
         file = request.files.get("file")
-        length = request.form.get("length", "medium")
         if file:
             text += read_file(file)
         if text.strip():
-            summary, words, chars, score = summarize_text(text, length)
+            summary, words, chars, score = summarize_text(text)
             info = f"📝 Words: {words} | 🔠 Characters: {chars} | 📊 Readability: {score:.2f}"
             save_summary(summary)
     return render_template("index.html", summary=summary, info=info)
@@ -108,5 +105,3 @@ def download():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-
