@@ -1,7 +1,7 @@
-flask
+flask==2.2.5
 transformers==4.41.1
-torch
-textstat
-python-docx
-PyPDF2
-sentencepiece
+torch==2.2.1
+textstat==0.7.3
+python-docx==0.8.11
+PyPDF2==3.0.1
+sentencepiece==0.1.99
