@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request
-from transformers import pipeline
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+import torch
 import os
 import textstat
 import json
@@ -7,7 +8,8 @@ import PyPDF2
 import docx
 
 app = Flask(__name__)
-summarizer = pipeline("summarization", model="t5-small")
+tokenizer = T5Tokenizer.from_pretrained("t5-small")
+model = T5ForConditionalGeneration.from_pretrained("t5-small")
 
 HISTORY_FILE = "summary_history.json"
 
@@ -28,16 +30,17 @@ def read_file(file):
     if file.filename.endswith(".txt"):
         return file.read().decode("utf-8")
     elif file.filename.endswith(".pdf"):
-        reader = PyPDF2.PdfReader(file)
-        return " ".join(page.extract_text() or "" for page in reader.pages)
+        pdf = PyPDF2.PdfReader(file)
+        return " ".join(page.extract_text() or "" for page in pdf.pages)
     elif file.filename.endswith(".docx"):
         doc = docx.Document(file)
         return "\n".join(p.text for p in doc.paragraphs)
     return ""
 
 def summarize_text(text):
-    summary = summarizer(text[:1000], max_length=150, min_length=30, do_sample=False)
-    return summary[0]['summary_text']
+    input_ids = tokenizer.encode("summarize: " + text, return_tensors="pt", max_length=512, truncation=True)
+    output_ids = model.generate(input_ids, max_length=150, num_beams=4, early_stopping=True)
+    return tokenizer.decode(output_ids[0], skip_special_tokens=True)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -59,5 +62,5 @@ def index():
                            word_count=word_count, readability=readability, history=history)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
+    port = int(os.environ.get("PORT", 8080))  # required for Railway
     app.run(debug=False, host="0.0.0.0", port=port)
