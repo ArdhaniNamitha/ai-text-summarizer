@@ -1,5 +1,6 @@
 flask
 transformers
+torch==2.2.2
 textstat
 python-docx
 PyPDF2
