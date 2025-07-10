@@ -1,7 +1,7 @@
 flask
-transformers
-torch==2.2.2
+transformers==4.41.1
+torch==2.2.2+cpu
+sentencepiece
 textstat
 python-docx
 PyPDF2
-sentencepiece
