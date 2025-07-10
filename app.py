@@ -1,47 +1,15 @@
-from flask import Flask, render_template, request, send_file
-from transformers import T5Tokenizer, T5ForConditionalGeneration
-import torch
+from flask import Flask, render_template, request
+from transformers import pipeline
+import os
 import textstat
 import json
-import os
-import io
 import PyPDF2
 import docx
 
 app = Flask(__name__)
-
-# Load small model to fit within 512MB Render memory
-tokenizer = T5Tokenizer.from_pretrained("t5-small")
-model = T5ForConditionalGeneration.from_pretrained("t5-small")
+summarizer = pipeline("summarization", model="t5-small")
 
 HISTORY_FILE = "summary_history.json"
-
-# ========== Utilities ==========
-
-def read_file(file):
-    if file.filename.endswith(".txt"):
-        return file.read().decode("utf-8")
-    elif file.filename.endswith(".pdf"):
-        pdf = PyPDF2.PdfReader(file)
-        return " ".join(page.extract_text() or "" for page in pdf.pages)
-    elif file.filename.endswith(".docx"):
-        doc = docx.Document(file)
-        return "\n".join(p.text for p in doc.paragraphs)
-    return ""
-
-def summarize(text, length="medium"):
-    prompt = "summarize: " + text.strip()
-    max_len = {"short": 50, "medium": 120, "long": 200}.get(length, 120)
-    inputs = tokenizer.encode(prompt, return_tensors="pt", max_length=512, truncation=True)
-    outputs = model.generate(inputs, max_length=max_len, num_beams=4, early_stopping=True)
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-def save_summary(original, summary):
-    history = load_history()
-    history.insert(0, {"original": original[:500], "summary": summary})
-    history = history[:10]
-    with open(HISTORY_FILE, "w") as f:
-        json.dump(history, f, indent=2)
 
 def load_history():
     if os.path.exists(HISTORY_FILE):
@@ -49,44 +17,47 @@ def load_history():
             return json.load(f)
     return []
 
-# ========== Routes ==========
+def save_summary(original, summary):
+    history = load_history()
+    history.insert(0, {"original": original, "summary": summary})
+    history = history[:10]
+    with open(HISTORY_FILE, "w") as f:
+        json.dump(history, f, indent=2)
+
+def read_file(file):
+    if file.filename.endswith(".txt"):
+        return file.read().decode("utf-8")
+    elif file.filename.endswith(".pdf"):
+        reader = PyPDF2.PdfReader(file)
+        return " ".join(page.extract_text() or "" for page in reader.pages)
+    elif file.filename.endswith(".docx"):
+        doc = docx.Document(file)
+        return "\n".join(p.text for p in doc.paragraphs)
+    return ""
+
+def summarize_text(text):
+    summary = summarizer(text[:1000], max_length=150, min_length=30, do_sample=False)
+    return summary[0]['summary_text']
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    summary = word_count = readability = original = ""
-    selected_length = "medium"
-
+    summary = original_text = word_count = readability = ""
     if request.method == "POST":
-        selected_length = request.form.get("length", "medium")
-
-        if "file" in request.files and request.files["file"].filename:
-            original = read_file(request.files["file"])
+        if "file" in request.files and request.files["file"].filename != "":
+            original_text = read_file(request.files["file"])
         else:
-            original = request.form["text"]
+            original_text = request.form["text"]
 
-        if original.strip():
-            summary = summarize(original, selected_length)
-            word_count = len(original.split())
-            readability = textstat.flesch_reading_ease(original)
-            save_summary(original, summary)
+        if original_text.strip():
+            summary = summarize_text(original_text)
+            word_count = len(original_text.split())
+            readability = textstat.flesch_reading_ease(original_text)
+            save_summary(original_text, summary)
 
     history = load_history()
-    return render_template("index.html",
-                           summary=summary,
-                           word_count=word_count,
-                           readability=readability,
-                           history=history,
-                           length=selected_length)
-
-@app.route("/download", methods=["POST"])
-def download():
-    summary = request.form["summary"]
-    file_stream = io.BytesIO()
-    file_stream.write(summary.encode("utf-8"))
-    file_stream.seek(0)
-    return send_file(file_stream, as_attachment=True, download_name="summary.txt", mimetype="text/plain")
+    return render_template("index.html", summary=summary, original=original_text,
+                           word_count=word_count, readability=readability, history=history)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(debug=False, host="0.0.0.0", port=port)
-
